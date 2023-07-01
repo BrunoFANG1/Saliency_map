@@ -346,7 +346,7 @@ class CLIP(nn.Module):
     def encode_image(self, image):
         return self.visual(image.type(self.dtype))
 
-    def encode_text(self, text):
+    def encode_text(self, text, word_num=None):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
 
         x = x + self.positional_embedding.type(self.dtype)
@@ -357,13 +357,19 @@ class CLIP(nn.Module):
 
         # x.shape = [batch_size, n_ctx, transformer.width]
         # take features from the eot embedding (eot_token is the highest number in each sequence)
-        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
+        if word_num is None:
+            x = x[torch.arange(x.shape[0]) , text.argmax(dim=-1)] @ self.text_projection
+        else:
+            x = x @ self.text_projection
 
         return x
 
-    def forward(self, image, text):
+    def forward(self, image, text, word_num = None):
         image_features = self.encode_image(image)
-        text_features = self.encode_text(text)
+        if word_num is None:
+            text_features = self.encode_text(text)
+        else:
+            text_features = self.encode_text(text, word_num = word_num)[:, word_num, :]
 
         # normalized features
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
@@ -371,6 +377,7 @@ class CLIP(nn.Module):
 
         # cosine similarity as logits
         logit_scale = self.logit_scale.exp()
+        
         logits_per_image = logit_scale * image_features @ text_features.t()
         logits_per_text = logit_scale * text_features @ image_features.t()
 
