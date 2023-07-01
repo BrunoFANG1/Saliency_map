@@ -364,7 +364,7 @@ class CLIP(nn.Module):
 
         return x
 
-    def forward(self, image, text, word_num = None):
+    def forward(self, image, text, word_num = None, neg_word_num=None):
         image_features = self.encode_image(image)
         if word_num is None:
             text_features = self.encode_text(text)
@@ -375,9 +375,16 @@ class CLIP(nn.Module):
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
+        # Deduct negative words
+        if neg_word_num is not None:
+            for i in range(len(neg_word_num)):
+                text_features_neg = self.encode_text(text, word_num=word_num)[:, neg_word_num[i], :]
+                text_features_neg = text_features_neg / text_features_neg.norm(dim=-1, keepdim=True)   # not sure about this normalize or not
+                text_features = text_features -  text_features_neg
+
         # cosine similarity as logits
         logit_scale = self.logit_scale.exp()
-        
+
         logits_per_image = logit_scale * image_features @ text_features.t()
         logits_per_text = logit_scale * text_features @ image_features.t()
 
