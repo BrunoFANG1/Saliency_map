@@ -373,14 +373,17 @@ class CLIP(nn.Module):
 
         # normalized features
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
-        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
+        # text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
         # Deduct negative words
         if neg_word_num is not None:
             for i in range(len(neg_word_num)):
                 text_features_neg = self.encode_text(text, word_num=word_num)[:, neg_word_num[i], :]
-                text_features_neg = text_features_neg / text_features_neg.norm(dim=-1, keepdim=True)   # not sure about this normalize or not
-                text_features = text_features -  text_features_neg
+                # text_features_neg = text_features_neg / text_features_neg.norm(dim=-1, keepdim=True)   # not sure about this normalize or not
+                text_features = text_features - text_features_neg
+
+        print(text_features.shape)
+        text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
         # cosine similarity as logits
         logit_scale = self.logit_scale.exp()
