@@ -382,7 +382,6 @@ class CLIP(nn.Module):
                 # text_features_neg = text_features_neg / text_features_neg.norm(dim=-1, keepdim=True)   # not sure about this normalize or not
                 text_features = text_features - text_features_neg
 
-        print(text_features.shape)
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
         # cosine similarity as logits
