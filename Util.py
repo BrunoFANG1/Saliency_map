@@ -9,7 +9,7 @@ from captum.attr import visualization
 
 
 def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, word_num=None, neg_word_num=None):
-    print(f"The index of saliency word is {word_num}")
+    
     batch_size = texts.shape[0]
     images = image.repeat(batch_size, 1, 1, 1)
     logits_per_image, logits_per_text = model(images, texts, word_num, neg_word_num)
@@ -69,7 +69,7 @@ def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, 
     return text_relevance, image_relevance
 
 
-def show_image_relevance(image_relevance, image, word, save_RGB=False, dir_name=None,save_path=None, num=None):
+def show_image_relevance(image_relevance, image, save_RGB=False, dir_name=None,save_path=None, num=None):
     # create heatmap from mask on image
     def show_cam_on_image(img, mask):
         heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_JET)
@@ -94,7 +94,6 @@ def show_image_relevance(image_relevance, image, word, save_RGB=False, dir_name=
     if save_RGB is True:
         filepath = os.path.join(save_path, f"{dir_name}_{num}_relevance.png")
         plt.savefig(filepath, bbox_inches='tight', pad_inches = 0)  # save figure without axis
-        print(f"Image saved at {filepath}")
         
     return torch.from_numpy(image_relevance)  
 
@@ -104,11 +103,11 @@ _tokenizer = _Tokenizer()
 
 
 def show_heatmap_on_text(text, text_encoding, R_text):
+    
   CLS_idx = text_encoding.argmax(dim=-1)
   R_text = R_text[CLS_idx, 1:CLS_idx]
   text_scores = R_text / R_text.sum()
   text_scores = text_scores.flatten()
-  print(text_scores)
   text_tokens=_tokenizer.encode(text)
   text_tokens_decoded=[_tokenizer.decode([a]) for a in text_tokens]
   vis_data_records = [visualization.VisualizationDataRecord(text_scores,0,0,0,0,0,text_tokens_decoded,1)]
@@ -152,7 +151,6 @@ def try_one_image(img_path=None,
 
     R_text_None, _ = interpret(model=model, image=img, texts=text, device=device)
     indices = show_heatmap_on_text(texts[0], text[0], R_text_None[0])
-    print(f"The indices of saliency words are {indices+1}")
 
     dir_name = os.path.splitext(os.path.basename(img_path))[0]
     new_dir_path = os.path.join(save_path, dir_name)
@@ -161,13 +159,13 @@ def try_one_image(img_path=None,
     # get saliency map
     final_map = torch.zeros((len(indices), 196))
     for i in range(len(indices)):
-        print(f"The salient word is {words[indices[i]]}")
+        
         R_text, R_image = interpret(model=model, image=img, texts=text, device=device, word_num=indices[i]+1, neg_word_num=None)
-        saliency_prob_map = show_image_relevance(R_image[0], img, words[indices[i]], save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
+        saliency_prob_map = show_image_relevance(R_image[0], img, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
 
-    #convert from 224*224 to 14*14
-    patch_prob_map = average_map(saliency_prob_map)
-    final_map[i] = patch_prob_map
+        #convert from 224*224 to 14*14
+        patch_prob_map = average_map(saliency_prob_map)
+        final_map[i] = patch_prob_map
 
     torch.save(final_map, f"{new_dir_path}/{dir_name}_patched_prob_map.pt")
 
