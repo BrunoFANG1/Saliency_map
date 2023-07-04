@@ -8,11 +8,11 @@ import os
 from captum.attr import visualization
 
 
-def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, word_num=None, neg_word_num=None):
+def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
     
     batch_size = texts.shape[0]
     images = image.repeat(batch_size, 1, 1, 1)
-    logits_per_image, logits_per_text = model(images, texts, word_num, neg_word_num)
+    logits_per_image, logits_per_text = model(images, texts, token_num, neg_word_num)
     probs = logits_per_image.softmax(dim=-1).detach().cpu().numpy()
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
@@ -160,7 +160,7 @@ def try_one_image(img_path=None,
     final_map = torch.zeros((len(indices), 196))
     for i in range(len(indices)):
         
-        R_text, R_image = interpret(model=model, image=img, texts=text, device=device, word_num=indices[i]+1, neg_word_num=None)
+        R_text, R_image = interpret(model=model, image=img, texts=text, device=device, token_num=indices[i]+1, neg_word_num=None)
         saliency_prob_map = show_image_relevance(R_image[0], img, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
 
         #convert from 224*224 to 14*14
