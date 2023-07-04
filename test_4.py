@@ -4,6 +4,8 @@ import ijson
 from multiprocessing import Pool
 from tqdm import tqdm
 from Util import try_one_image
+import multiprocessing as mp
+
 
 
 def process_image(obj):
@@ -16,8 +18,10 @@ def process_image(obj):
 filename = "/home/yli556/william/project/dataSet/cc3m/cc3m.json"
 img_path_ori = "/home/yli556/william/project/dataSet/cc3m" 
 
-
-with open(filename, 'r') as f:
-    objects = list(ijson.items(f, 'item'))  # Convert iterator to list for accurate progress bar
-    with Pool(processes=os.cpu_count()) as pool:
-        list(tqdm(pool.imap(process_image, objects), total=len(objects)))
+if __name__ =='__main__':
+    mp.set_start_method('spawn')
+    print(1)
+    with open(filename, 'r') as f:
+        objects = list(ijson.items(f, 'item'))  # Convert iterator to list for accurate progress bar
+        with Pool(processes=os.cpu_count()) as pool:
+            list(tqdm(pool.imap(process_image, objects), total=len(objects)))
