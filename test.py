@@ -22,6 +22,6 @@ images = torch.stack(img_list)
 try_one_image(model=model,
               device=device,
               imgs=images,
-              texts=['a zebra and an elephant near the water', 'a dog and a bird'],
+              texts=['a zebra and an elephant near the water', 'a dog and a bird in the figure'],
               save_path="./"
               )

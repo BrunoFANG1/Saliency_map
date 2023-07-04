@@ -104,12 +104,18 @@ _tokenizer = _Tokenizer()
 def show_heatmap_on_text(text, text_encoding, R_text):
     
   CLS_idx = text_encoding.argmax(dim=-1)
-  R_text = R_text[CLS_idx, 1:CLS_idx]
-  text_scores = R_text / R_text.sum()
-  text_scores = text_scores.flatten()
 
-  # take 1/4 word as saliency word and generate their corresponding saliency map
-  _, indices = text_scores.topk(len(text_scores) // 4)
+  indices = []
+
+  for i in range(len(CLS_idx)):
+     R_text_ = R_text[i, CLS_idx[i], 1:CLS_idx[i]]
+     text_scores = R_text_ / R_text_.sum()
+     text_scores = text_scores.flatten()
+
+     # take 1/4 word as saliency word and generate their corresponding saliency map
+     _, inde = text_scores.topk(len(text_scores) // 4)
+
+     indices.append(inde)
 
   return indices
 
@@ -142,7 +148,8 @@ def try_one_image(model,
 
     R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
 
-    indices = show_heatmap_on_text(texts[0], text[0], R_text_None[0])
+    indices = show_heatmap_on_text(texts, text, R_text_None)
+
 
     dir_name = os.path.splitext(os.path.basename(img_path))[0]
     new_dir_path = os.path.join(save_path, dir_name)
