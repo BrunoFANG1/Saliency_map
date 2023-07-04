@@ -366,7 +366,7 @@ class CLIP(nn.Module):
 
     def forward(self, image, text, word_num = None, neg_word_num=None):
         image_features = self.encode_image(image)
-        print(f"image_features")
+        
         if word_num is None:
             text_features = self.encode_text(text)
         else:

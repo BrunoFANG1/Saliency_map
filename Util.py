@@ -12,6 +12,7 @@ def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, 
     
     batch_size = texts.shape[0]
     images = image
+    print(f"token_num is {token_num}")
     logits_per_image, _ = model(images, texts, token_num, neg_word_num)
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
@@ -19,51 +20,54 @@ def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, 
     one_hot = torch.from_numpy(one_hot).requires_grad_(True)
     one_hot = torch.sum(one_hot.cuda() * logits_per_image)
     model.zero_grad()
+    text_relevance = None
+    image_relevance = None
 
-    image_attn_blocks = list(dict(model.visual.transformer.resblocks.named_children()).values())
+    if token_num is not None:
+      image_attn_blocks = list(dict(model.visual.transformer.resblocks.named_children()).values())
 
-    if start_layer == -1: 
-      # calculate index of last layer 
-      start_layer = len(image_attn_blocks) - 1
-    
-    num_tokens = image_attn_blocks[0].attn_probs.shape[-1]
-    R = torch.eye(num_tokens, num_tokens, dtype=image_attn_blocks[0].attn_probs.dtype).to(device)
-    R = R.unsqueeze(0).expand(batch_size, num_tokens, num_tokens)
-    for i, blk in enumerate(image_attn_blocks):
-        if i < start_layer:
-          continue
-        grad = torch.autograd.grad(one_hot, [blk.attn_probs], retain_graph=True)[0].detach()
-        cam = blk.attn_probs.detach()
-        cam = cam.reshape(-1, cam.shape[-1], cam.shape[-1])
-        grad = grad.reshape(-1, grad.shape[-1], grad.shape[-1])
-        cam = grad * cam
-        cam = cam.reshape(batch_size, -1, cam.shape[-1], cam.shape[-1])
-        cam = cam.clamp(min=0).mean(dim=1)
-        R = R + torch.bmm(cam, R)
-    image_relevance = R[:, 0, 1:]
+      if start_layer == -1: 
+        # calculate index of last layer 
+        start_layer = len(image_attn_blocks) - 1
+      
+      num_tokens = image_attn_blocks[0].attn_probs.shape[-1]
+      R = torch.eye(num_tokens, num_tokens, dtype=image_attn_blocks[0].attn_probs.dtype).to(device)
+      R = R.unsqueeze(0).expand(batch_size, num_tokens, num_tokens)
+      for i, blk in enumerate(image_attn_blocks):
+          if i < start_layer:
+            continue
+          grad = torch.autograd.grad(one_hot, [blk.attn_probs], retain_graph=True)[0].detach()
+          cam = blk.attn_probs.detach()
+          cam = cam.reshape(-1, cam.shape[-1], cam.shape[-1])
+          grad = grad.reshape(-1, grad.shape[-1], grad.shape[-1])
+          cam = grad * cam
+          cam = cam.reshape(batch_size, -1, cam.shape[-1], cam.shape[-1])
+          cam = cam.clamp(min=0).mean(dim=1)
+          R = R + torch.bmm(cam, R)
+      image_relevance = R[:, 0, 1:]
 
-    
-    text_attn_blocks = list(dict(model.transformer.resblocks.named_children()).values())
+    if token_num is None:
+      text_attn_blocks = list(dict(model.transformer.resblocks.named_children()).values())
 
-    if start_layer_text == -1: 
-      # calculate index of last layer 
-      start_layer_text = len(text_attn_blocks) - 1
+      if start_layer_text == -1: 
+        # calculate index of last layer 
+        start_layer_text = len(text_attn_blocks) - 1
 
-    num_tokens = text_attn_blocks[0].attn_probs.shape[-1]
-    R_text = torch.eye(num_tokens, num_tokens, dtype=text_attn_blocks[0].attn_probs.dtype).to(device)
-    R_text = R_text.unsqueeze(0).expand(batch_size, num_tokens, num_tokens)
-    for i, blk in enumerate(text_attn_blocks):
-        if i < start_layer_text:
-          continue
-        grad = torch.autograd.grad(one_hot, [blk.attn_probs], retain_graph=True)[0].detach()
-        cam = blk.attn_probs.detach()
-        cam = cam.reshape(-1, cam.shape[-1], cam.shape[-1])
-        grad = grad.reshape(-1, grad.shape[-1], grad.shape[-1])
-        cam = grad * cam
-        cam = cam.reshape(batch_size, -1, cam.shape[-1], cam.shape[-1])
-        cam = cam.clamp(min=0).mean(dim=1)
-        R_text = R_text + torch.bmm(cam, R_text)
-    text_relevance = R_text
+      num_tokens = text_attn_blocks[0].attn_probs.shape[-1]
+      R_text = torch.eye(num_tokens, num_tokens, dtype=text_attn_blocks[0].attn_probs.dtype).to(device)
+      R_text = R_text.unsqueeze(0).expand(batch_size, num_tokens, num_tokens)
+      for i, blk in enumerate(text_attn_blocks):
+          if i < start_layer_text:
+            continue
+          grad = torch.autograd.grad(one_hot, [blk.attn_probs], retain_graph=True)[0].detach()
+          cam = blk.attn_probs.detach()
+          cam = cam.reshape(-1, cam.shape[-1], cam.shape[-1])
+          grad = grad.reshape(-1, grad.shape[-1], grad.shape[-1])
+          cam = grad * cam
+          cam = cam.reshape(batch_size, -1, cam.shape[-1], cam.shape[-1])
+          cam = cam.clamp(min=0).mean(dim=1)
+          R_text = R_text + torch.bmm(cam, R_text)
+      text_relevance = R_text
    
     return text_relevance, image_relevance
 
@@ -139,9 +143,12 @@ clip.clip._MODELS = {
 def try_one_image(model,
                   device,
                   imgs,
+                  imgs_name,
                   texts=None,
                   save_path=None,
                    ):
+
+    batch_size = len(texts)
 
     imgs = imgs.to(device)
     text = clip.tokenize(texts).to(device)
@@ -151,21 +158,26 @@ def try_one_image(model,
     indices = show_heatmap_on_text(texts, text, R_text_None)
 
 
-    dir_name = os.path.splitext(os.path.basename(img_path))[0]
-    new_dir_path = os.path.join(save_path, dir_name)
-    os.makedirs(new_dir_path, exist_ok=True)
 
-    # get saliency map
-    final_map = torch.zeros((len(indices), 196))
-    for i in range(len(indices)):
-        
-        R_text, R_image = interpret(model=model, image=imgs, texts=text, device=device, token_num=indices[i]+1, neg_word_num=None)
-        saliency_prob_map = show_image_relevance(R_image[0], imgs, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
+    for img in range(batch_size):
+      # dir_name = os.path.splitext(os.path.basename(imgs_name[img]))[0]
+      # new_dir_path = os.path.join(save_path, dir_name)
+      # os.makedirs(new_dir_path, exist_ok=True)
 
-        #convert from 224*224 to 14*14
-        patch_prob_map = average_map(saliency_prob_map)
-        final_map[i] = patch_prob_map
+      # get saliency map
+      final_map = torch.zeros((len(indices[img]), 196))
+      for i in range(len(indices[img])):
+          
+          _, R_image = interpret(model=model, image=imgs[img].unsqueeze(0), texts=text[img], device=device, token_num=indices[img][i]+1, neg_word_num=None)
+          print(R_image.shape)
+          assert False
 
-    torch.save(final_map, f"{new_dir_path}/{dir_name}_patched_prob_map.pt")
+          saliency_prob_map = show_image_relevance(R_image[0], imgs, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
+
+          #convert from 224*224 to 14*14
+          patch_prob_map = average_map(saliency_prob_map)
+          final_map[i] = patch_prob_map
+
+      torch.save(final_map, f"{new_dir_path}/{dir_name}_patched_prob_map.pt")
 
     return 0
