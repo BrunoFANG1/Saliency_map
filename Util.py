@@ -108,10 +108,6 @@ def show_heatmap_on_text(text, text_encoding, R_text):
   R_text = R_text[CLS_idx, 1:CLS_idx]
   text_scores = R_text / R_text.sum()
   text_scores = text_scores.flatten()
-  text_tokens=_tokenizer.encode(text)
-  text_tokens_decoded=[_tokenizer.decode([a]) for a in text_tokens]
-  vis_data_records = [visualization.VisualizationDataRecord(text_scores,0,0,0,0,0,text_tokens_decoded,1)]
-  visualization.visualize_text(vis_data_records)
 
   # take 1/4 word as saliency word and generate their corresponding saliency map
   _, indices = text_scores.topk(len(text_scores) // 4)
