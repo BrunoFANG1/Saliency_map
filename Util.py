@@ -11,9 +11,8 @@ from captum.attr import visualization
 def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
     
     batch_size = texts.shape[0]
-    images = image.repeat(batch_size, 1, 1, 1)
-    logits_per_image, logits_per_text = model(images, texts, token_num, neg_word_num)
-    probs = logits_per_image.softmax(dim=-1).detach().cpu().numpy()
+    images = image
+    logits_per_image, _ = model(images, texts, token_num, neg_word_num)
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
     one_hot[torch.arange(logits_per_image.shape[0]), index] = 1
@@ -129,23 +128,20 @@ clip.clip._MODELS = {
     "ViT-B/16": "https://openaipublic.azureedge.net/clip/models/5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt",
     "ViT-L/14": "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
 }
+ 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
-model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
-
-
-
-
-def try_one_image(img_path=None,
+def try_one_image(model,
+                  device,
+                  imgs,
                   texts=None,
                   save_path=None,
                    ):
 
-    img = preprocess(Image.open(img_path)).unsqueeze(0).to(device)
+    imgs = imgs.to(device)
     text = clip.tokenize(texts).to(device)
-    words = texts[0].split()
 
-    R_text_None, _ = interpret(model=model, image=img, texts=text, device=device)
+    R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
+
     indices = show_heatmap_on_text(texts[0], text[0], R_text_None[0])
 
     dir_name = os.path.splitext(os.path.basename(img_path))[0]
@@ -156,8 +152,8 @@ def try_one_image(img_path=None,
     final_map = torch.zeros((len(indices), 196))
     for i in range(len(indices)):
         
-        R_text, R_image = interpret(model=model, image=img, texts=text, device=device, token_num=indices[i]+1, neg_word_num=None)
-        saliency_prob_map = show_image_relevance(R_image[0], img, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
+        R_text, R_image = interpret(model=model, image=imgs, texts=text, device=device, token_num=indices[i]+1, neg_word_num=None)
+        saliency_prob_map = show_image_relevance(R_image[0], imgs, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
 
         #convert from 224*224 to 14*14
         patch_prob_map = average_map(saliency_prob_map)
