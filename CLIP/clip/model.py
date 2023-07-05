@@ -348,7 +348,7 @@ class CLIP(nn.Module):
 
     def encode_text(self, text, word_num=None):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
-        print(f"x shape is {x.shape}")
+
         x = x + self.positional_embedding.type(self.dtype)
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.transformer(x)

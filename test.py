@@ -16,16 +16,17 @@ img_list = []
 img_list = [images_1, images_2]
 images = torch.stack(img_list)
 
-imgs_name = []
-######
-imgs_name = ["el2.png", "dogbird.png"]
-
+dir_name = []
 dir_name = ["el2", "el3"]
+
+texts = []
+
+texts = ['a zebra and an elephant near the water', 'a dog and a bird in the figure']
 
 try_patch_image(model=model,
               device=device,
               imgs=images,
               dirs_name=dir_name,
-              texts=['a zebra and an elephant near the water', 'a dog and a bird in the figure'],
+              texts=texts,
               save_path="./"
               )
