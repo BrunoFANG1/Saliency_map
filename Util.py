@@ -12,7 +12,6 @@ def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, 
     
     batch_size = texts.shape[0]
     images = image
-    print(f"token_num is {token_num}")
     logits_per_image, _ = model(images, texts, token_num, neg_word_num)
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
@@ -72,7 +71,7 @@ def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, 
     return text_relevance, image_relevance
 
 
-def show_image_relevance(image_relevance, image, save_RGB=False, dir_name=None,save_path=None, num=None):
+def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,save_path=None, num=None):
     # create heatmap from mask on image
     def show_cam_on_image(img, mask):
         heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_JET)
@@ -140,13 +139,13 @@ clip.clip._MODELS = {
 }
  
 
-def try_one_image(model,
+def try_patch_image(model,
                   device,
                   imgs,
-                  imgs_name,
+                  dirs_name,
                   texts=None,
                   save_path=None,
-                   ):
+                  ):
 
     batch_size = len(texts)
 
@@ -160,24 +159,23 @@ def try_one_image(model,
 
 
     for img in range(batch_size):
-      # dir_name = os.path.splitext(os.path.basename(imgs_name[img]))[0]
-      # new_dir_path = os.path.join(save_path, dir_name)
-      # os.makedirs(new_dir_path, exist_ok=True)
+
+      new_dir_path = os.path.join(save_path, dirs_name[img])
+      os.makedirs(new_dir_path, exist_ok=True)
 
       # get saliency map
       final_map = torch.zeros((len(indices[img]), 196))
       for i in range(len(indices[img])):
           
-          _, R_image = interpret(model=model, image=imgs[img].unsqueeze(0), texts=text[img], device=device, token_num=indices[img][i]+1, neg_word_num=None)
-          print(R_image.shape)
-          assert False
+          _, R_image = interpret(model=model, image=imgs[img].unsqueeze(0), texts=text[img].unsqueeze(0), device=device, token_num=indices[img][i]+1, neg_word_num=None)
 
-          saliency_prob_map = show_image_relevance(R_image[0], imgs, save_RGB=True, dir_name=dir_name, save_path=new_dir_path, num=i)
+          saliency_prob_map = show_image_relevance(R_image, imgs[img].unsqueeze(0), save_RGB=True, dir_name=dirs_name[img], save_path=new_dir_path, num=i)
 
           #convert from 224*224 to 14*14
           patch_prob_map = average_map(saliency_prob_map)
+
           final_map[i] = patch_prob_map
 
-      torch.save(final_map, f"{new_dir_path}/{dir_name}_patched_prob_map.pt")
+      torch.save(final_map, f"{new_dir_path}/{dirs_name[img]}_patched_prob_map.pt")
 
     return 0

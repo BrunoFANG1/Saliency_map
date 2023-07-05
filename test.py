@@ -1,4 +1,4 @@
-from Util import try_one_image
+from Util import try_patch_image
 from PIL import Image
 import torch
 import CLIP.clip as clip
@@ -17,13 +17,15 @@ img_list = [images_1, images_2]
 images = torch.stack(img_list)
 
 imgs_name = []
-####
+######
 imgs_name = ["el2.png", "dogbird.png"]
 
-try_one_image(model=model,
+dir_name = ["el2", "el3"]
+
+try_patch_image(model=model,
               device=device,
               imgs=images,
-              imgs_name=imgs_name,
+              dirs_name=dir_name,
               texts=['a zebra and an elephant near the water', 'a dog and a bird in the figure'],
               save_path="./"
               )
