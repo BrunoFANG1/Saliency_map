@@ -27,6 +27,7 @@ class ImageCaptionDataset(Dataset):
         img_name = obj['image']
         img_caption = re.sub(r'[^\w\s]', '', obj['caption'])
         img_path = os.path.join(self.img_dir, img_name)
+        img_name = img_name.split("/")[-1].split(".")[0]
         image = preprocess(Image.open(img_path))
         return image, img_path, img_caption, img_name  # Not really useful, but need to return something
 
@@ -36,7 +37,7 @@ dataset = ImageCaptionDataset("/home/yli556/william/project/dataSet/cc3m/cc3m.js
                               "/home/yli556/william/project/dataSet/cc3m")
 
 # Use the DataLoader
-dataloader = torch.utils.data.DataLoader(dataset, batch_size=32, num_workers=6, shuffle=False)
+dataloader = torch.utils.data.DataLoader(dataset, batch_size=3, num_workers=6, shuffle=False)
 
 # Process the images
 for batch in tqdm(dataloader):
@@ -47,5 +48,5 @@ for batch in tqdm(dataloader):
               imgs=images,
               dirs_name=img_names,
               texts=img_captions,
-              save_path="./"
+              save_path="/home/yli556/xfang/Saliency_map/saliency_map"
     )
