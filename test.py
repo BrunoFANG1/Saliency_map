@@ -1,7 +1,7 @@
 from PIL import Image
 import torch
 import CLIP.clip as clip
-from Util import find_saliency_word
+from Util import get_saliency_word
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -23,5 +23,10 @@ texts = []
 
 texts = ['a zebra and an elephant near the water', 'a dog and a bird in the figure']
 
-a = find_saliency_word(model, device, images, texts)
+a = get_saliency_word(model, device, images, texts)
+
 print(a)
+
+a = torch.tensor([1,2])
+b = torch.tensor([1,2],[3,4])
+print(b[:,a])

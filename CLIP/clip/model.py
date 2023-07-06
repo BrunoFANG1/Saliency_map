@@ -367,10 +367,12 @@ class CLIP(nn.Module):
     def forward(self, image, text, word_num = None, neg_word_num=None):
         image_features = self.encode_image(image)
         
+        batch_size = image.shape[0]
+
         if word_num is None:
             text_features = self.encode_text(text)
         else:
-            text_features = self.encode_text(text, word_num = word_num)[:, word_num, :]
+            text_features = self.encode_text(text, word_num = word_num)[torch.arange(batch_size), word_num, :]
 
         # normalized features
         image_features = image_features / image_features.norm(dim=-1, keepdim=True)
@@ -382,7 +384,7 @@ class CLIP(nn.Module):
                 text_features_neg = self.encode_text(text, word_num=word_num)[:, neg_word_num[i], :]
                 # text_features_neg = text_features_neg / text_features_neg.norm(dim=-1, keepdim=True)   # not sure about this normalize or not
                 text_features = text_features - text_features_neg
-
+    
         text_features = text_features / text_features.norm(dim=-1, keepdim=True)
 
         # cosine similarity as logits

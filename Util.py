@@ -180,18 +180,6 @@ def try_patch_image(model,
 
     return 0
 
-<<<<<<< HEAD
-
-def find_saliency_word(model, device, imgs, captions):
-  
-   imgs = imgs.to(device)
-   text = clip.tokenize(captions).to(device)
-
-   R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
-
-   indices = show_heatmap_on_text(captions, text, R_text_None)
-   return indices
-=======
 def get_saliency_word(model,
                       device,
                       imgs,
@@ -203,4 +191,3 @@ def get_saliency_word(model,
     indices = show_heatmap_on_text(text, R_text_None)
     return indices
 
->>>>>>> 85862dda42181bbcf4bf4d597aa3315c13036cbc
