@@ -104,7 +104,7 @@ from CLIP.clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
 _tokenizer = _Tokenizer()
 
 
-def show_heatmap_on_text(text, text_encoding, R_text):
+def show_heatmap_on_text(text_encoding, R_text):
     
   CLS_idx = text_encoding.argmax(dim=-1)
 
@@ -169,7 +169,7 @@ def try_patch_image(model,
           
           _, R_image = interpret(model=model, image=imgs[img].unsqueeze(0), texts=text[img].unsqueeze(0), device=device, token_num=indices[img][i]+1, neg_word_num=None)
 
-          saliency_prob_map = show_image_relevance(R_image, imgs[img].unsqueeze(0), save_RGB=True, dir_name=dirs_name[img], save_path=new_dir_path, num=i)
+          saliency_prob_map = show_image_relevance(R_image, imgs[img].unsqueeze(0), save_RGB=False, dir_name=dirs_name[img], save_path=new_dir_path, num=i)
 
           #convert from 224*224 to 14*14
           patch_prob_map = average_map(saliency_prob_map)
@@ -179,3 +179,15 @@ def try_patch_image(model,
       torch.save(final_map, f"{new_dir_path}/{dirs_name[img]}_patched_prob_map.pt")
 
     return 0
+
+def get_saliency_word(model,
+                      device,
+                      imgs,
+                      captions):
+    batch_size = len(captions)
+    imgs = imgs.to(device)
+    text = clip.tokenize(captions).to(device)
+    R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
+    indices = show_heatmap_on_text(text, R_text_None)
+    return indices
+
