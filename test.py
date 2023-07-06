@@ -1,4 +1,3 @@
-from Util import try_patch_image
 from PIL import Image
 import torch
 import CLIP.clip as clip
