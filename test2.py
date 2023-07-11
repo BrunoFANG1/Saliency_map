@@ -67,7 +67,7 @@ class ImageCaptionDataset(Dataset):
                 for idx in indices[i]:
                     inner_dict[idx] = map[map_idx].cpu()
                     map_idx += 1    
-                outer_dict[name] = inner_digict
+                outer_dict[name] = inner_dict
 
         # Write to JSON file
         with open('data.json', 'w') as f:
