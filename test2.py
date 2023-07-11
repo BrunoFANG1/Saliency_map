@@ -38,12 +38,12 @@ class ImageCaptionDataset(Dataset):
         return image, img_caption, img_name  # Not really useful, but need to return something
 
     def generate_json(self, batch_size=128):
-        data_dict = {}
+        outer_dict = {}
     
         # Use DataLoader to handle batching
         dataloader = torch.utils.data.DataLoader(self, batch_size=batch_size, num_workers=2, shuffle=False)
     
-        for batch in dataloader:
+        for batch in tqdm(dataloader):
             images, img_captions, img_names = batch
 
             # Apply transformations to the images and get saliency words from captions
@@ -61,7 +61,6 @@ class ImageCaptionDataset(Dataset):
 
             # Update data_dict
             i = 0
-            outer_dict = {}
             map_idx = 0
             for i, name in enumerate(img_names):
                 inner_dict = {}
@@ -79,14 +78,5 @@ class ImageCaptionDataset(Dataset):
 dataset = ImageCaptionDataset("/home/yli556/william/project/dataSet/cc3m/cc3m.json",
                               "/home/yli556/william/project/dataSet/cc3m")
 
+dataset.generate_json
 # Process the images
-for batch in tqdm(dataloader):
-    images, img_paths, img_captions, img_names = batch
-    try_patch_image(
-              model=model,
-              device=device,
-              imgs=images,
-              dirs_name=img_names,
-              texts=img_captions,
-              save_path="/home/yli556/xfang/Saliency_map/saliency_map"
-    )
