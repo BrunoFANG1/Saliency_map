@@ -5,7 +5,7 @@ import json
 import torch
 import CLIP.clip as clip
 from torch.utils.data import Dataset
-from Util import try_patch_image
+from Util import get_saliency_word, get_saliency_map
 from tqdm import tqdm
 from PIL import Image
 from PIL import UnidentifiedImageError
@@ -35,32 +35,44 @@ class ImageCaptionDataset(Dataset):
         except UnidentifiedImageError:
             print(f"cannot find this image {img_path}, skipping")
             return None
-        return image, img_path, img_caption, img_name  # Not really useful, but need to return something
+        return image, img_caption, img_name  # Not really useful, but need to return something
 
-    def generate_json(self, batch_size=64):
+    def generate_json(self, batch_size=128):
         data_dict = {}
     
         # Use DataLoader to handle batching
-        dataloader = torch.utils.data.DataLoader(self, batch_size=batch_size, num_workers=12, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(self, batch_size=batch_size, num_workers=2, shuffle=False)
     
         for batch in dataloader:
-            images, img_paths, img_captions, img_names = batch
+            images, img_captions, img_names = batch
 
-        # Apply transformations to the images and get saliency words from captions
-            salient_word_indices_lists = get_saliency_word(img_captions)
-            saliency_maps = get_saliency_maps()
+            # Apply transformations to the images and get saliency words from captions
+            images = images.to(device)
+            tokens = clip.tokenize(img_captions).to(device) 
 
-        # Update data_dict
-            for img_name, saliency_map_list, salient_word_indices_list in zip(img_names, saliency_maps, salient_word_indices_lists):
+            indices = get_saliency_word(model, device, images, tokens)
+
+            repeat_counts = torch.tensor([len(i) for i in indices]).to(device)
+            extended_images = images.repeat_interleave(repeat_counts, dim=0)
+            extended_tokens = tokens.repeat_interleave(repeat_counts, dim=0)
+            extended_indices = torch.cat(indices)
+
+            map = get_saliency_map(model, device, extended_images, extended_tokens ,extended_indices)
+
+            # Update data_dict
+            i = 0
+            outer_dict = {}
+            map_idx = 0
+            for i, name in enumerate(img_names):
                 inner_dict = {}
-                for salient_word_index, saliency_map in zip(salient_word_indices_list, saliency_map_list):
-                    inner_dict[salient_word_index] = saliency_map.tolist()  # Convert tensor to list for JSON serialization
+                for idx in indices[i]:
+                    inner_dict[idx] = map[map_idx].cpu()
+                    map_idx += 1    
+                outer_dict[name] = inner_dict
 
-                data_dict[img_name] = inner_dict
-
-    # Write to JSON file
-    with open('data.json', 'w') as f:
-        json.dump(data_dict, f)
+        # Write to JSON file
+        with open('data.json', 'w') as f:
+            json.dump(outer_dict, f)
 
 
 # Usage:

@@ -3,16 +3,15 @@ import CLIP.clip as clip
 from PIL import Image
 import numpy as np
 import cv2
+import time
 import matplotlib.pyplot as plt
 import os
 from captum.attr import visualization
 
 
 def interpret(images, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
-    
-    batch_size = texts.shape[0]
-    logits_per_image, _ = model(images, texts, token_num, neg_word_num)
-    print(logits_per_image.shape)
+    batch_size = texts.shape[0]     
+    logits_per_image, _ = model(images, texts, token_num, neg_word_num)  
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
     one_hot[torch.arange(logits_per_image.shape[0]), index] = 1
@@ -88,19 +87,19 @@ def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,sa
     max_values = image_relevance.amax(dim=0, keepdim=True)
     image_relevance = (image_relevance - min_values) / (max_values - min_values)  # (batch_size, 1, 224, 224)
 
-    # test
-    image_relevance = image_relevance.cuda().data.cpu().numpy()
-    pic_num = 1
-    image = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
-    image = (image - image.min()) / (image.max() - image.min())
-    vis = show_cam_on_image(image, image_relevance[pic_num][0])
-    vis = np.uint8(255 * vis)
-    vis = cv2.cvtColor(np.array(vis), cv2.COLOR_RGB2BGR)
-    plt.imshow(vis)
-    plt.axis('off')
+    # # test
+    # image_relevance = image_relevance.cuda().data.cpu().numpy()
+    # pic_num = 1
+    # image = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
+    # image = (image - image.min()) / (image.max() - image.min())
+    # vis = show_cam_on_image(image, image_relevance[pic_num][0])
+    # vis = np.uint8(255 * vis)
+    # vis = cv2.cvtColor(np.array(vis), cv2.COLOR_RGB2BGR)
+    # plt.imshow(vis)
+    # plt.axis('off')
 
-    if save_RGB is True:
-        plt.savefig("./try.png", bbox_inches='tight', pad_inches = 0)
+    # if save_RGB is True:
+    #     plt.savefig("./try.png", bbox_inches='tight', pad_inches = 0)
         
     return image_relevance  
 
@@ -176,12 +175,25 @@ def try_patch_image(model,
 
     return 0
 
+def average_map(map=None, patch_size=16):
+    map = map.squeeze()
+    p = patch_size
+    b, h, w = map.shape
+    h = h // p
+    w = w // p
+    map = map.reshape(b, h, p, w, p)
+    map = torch.einsum('bhpwq->bhwpq', map)
+    map = map.reshape(b, h * w, p**2)
+    patched_map = map.mean(dim=-1)
+    return patched_map
+
 def get_saliency_word(model,
                       device,
                       imgs,
                       tokens):
     # imgs = imgs.to(device)
     R_text_None, _ = interpret(model=model, images=imgs, texts=tokens, device=device)
+
     indices = show_heatmap_on_text(tokens, R_text_None)
     return indices
 
@@ -193,17 +205,8 @@ def get_saliency_map(model,
 
    _, R_image = interpret(model=model, images=imgs, texts=tokens, device=device, token_num=indices, neg_word_num=None)
 
-   maps = show_image_relevance(R_image, imgs)
+   maps = show_image_relevance(R_image, imgs)   # (batch_size, 1, 224, 224)
 
-  #  maps = average_map(maps)
+   maps = average_map(maps)  # (batch_size, 196)
 
    return maps
-
-def average_map(map=None,patch_size=16):
-    p = patch_size
-    h = w = map.shape[1] // p
-    map = map.reshape(h,p,w,p)
-    map = torch.einsum('hpwq->hwpq', map)
-    map = map.reshape(h * w, p**2)
-    patched_map = map.mean(dim=-1)
-    return patched_map
