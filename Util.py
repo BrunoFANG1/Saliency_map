@@ -8,11 +8,11 @@ import os
 from captum.attr import visualization
 
 
-def interpret(image, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
+def interpret(images, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
     
     batch_size = texts.shape[0]
-    images = image
     logits_per_image, _ = model(images, texts, token_num, neg_word_num)
+    print(logits_per_image.shape)
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
     one_hot[torch.arange(logits_per_image.shape[0]), index] = 1
@@ -80,24 +80,29 @@ def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,sa
         cam = cam / np.max(cam)
         return cam
 
-    dim = int(image_relevance.numel() ** 0.5)
-    image_relevance = image_relevance.reshape(1, 1, dim, dim)
+    dim = int(image_relevance[0].numel() ** 0.5)
+    image_relevance = image_relevance.reshape(image.shape[0], 1, dim, dim)
     image_relevance = torch.nn.functional.interpolate(image_relevance, size=224, mode='bilinear')
-    image_relevance = image_relevance.reshape(224, 224).cuda().data.cpu().numpy()
-    image_relevance = (image_relevance - image_relevance.min()) / (image_relevance.max() - image_relevance.min())
-    image = image[0].permute(1, 2, 0).data.cpu().numpy()
+
+    min_values = image_relevance.amin(dim=0, keepdim=True)
+    max_values = image_relevance.amax(dim=0, keepdim=True)
+    image_relevance = (image_relevance - min_values) / (max_values - min_values)  # (batch_size, 1, 224, 224)
+
+    # test
+    image_relevance = image_relevance.cuda().data.cpu().numpy()
+    pic_num = 1
+    image = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
     image = (image - image.min()) / (image.max() - image.min())
-    vis = show_cam_on_image(image, image_relevance)
+    vis = show_cam_on_image(image, image_relevance[pic_num][0])
     vis = np.uint8(255 * vis)
     vis = cv2.cvtColor(np.array(vis), cv2.COLOR_RGB2BGR)
     plt.imshow(vis)
     plt.axis('off')
 
     if save_RGB is True:
-        filepath = os.path.join(save_path, f"{dir_name}_{num}_relevance.png")
-        plt.savefig(filepath, bbox_inches='tight', pad_inches = 0)  # save figure without axis
+        plt.savefig("./try.png", bbox_inches='tight', pad_inches = 0)
         
-    return torch.from_numpy(image_relevance)  
+    return image_relevance  
 
 
 from CLIP.clip.simple_tokenizer import SimpleTokenizer as _Tokenizer
@@ -121,15 +126,6 @@ def show_heatmap_on_text(text_encoding, R_text):
      indices.append(inde)
 
   return indices
-
-def average_map(map=None,patch_size=16):
-    p = patch_size
-    h = w = map.shape[1] // p
-    map = map.reshape(h,p,w,p)
-    map = torch.einsum('hpwq->hwpq', map)
-    map = map.reshape(h * w, p**2)
-    patched_map = map.mean(dim=-1)
-    return patched_map
 
 
 clip.clip._MODELS = {
@@ -183,11 +179,31 @@ def try_patch_image(model,
 def get_saliency_word(model,
                       device,
                       imgs,
-                      captions):
-    batch_size = len(captions)
-    imgs = imgs.to(device)
-    text = clip.tokenize(captions).to(device)
-    R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
-    indices = show_heatmap_on_text(text, R_text_None)
+                      tokens):
+    # imgs = imgs.to(device)
+    R_text_None, _ = interpret(model=model, images=imgs, texts=tokens, device=device)
+    indices = show_heatmap_on_text(tokens, R_text_None)
     return indices
 
+def get_saliency_map(model,
+                     device,
+                     imgs,
+                     tokens,
+                     indices):
+
+   _, R_image = interpret(model=model, images=imgs, texts=tokens, device=device, token_num=indices, neg_word_num=None)
+
+   maps = show_image_relevance(R_image, imgs)
+
+  #  maps = average_map(maps)
+
+   return maps
+
+def average_map(map=None,patch_size=16):
+    p = patch_size
+    h = w = map.shape[1] // p
+    map = map.reshape(h,p,w,p)
+    map = torch.einsum('hpwq->hwpq', map)
+    map = map.reshape(h * w, p**2)
+    patched_map = map.mean(dim=-1)
+    return patched_map

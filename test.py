@@ -1,7 +1,7 @@
 from PIL import Image
 import torch
 import CLIP.clip as clip
-from Util import get_saliency_word
+from Util import get_saliency_word, get_saliency_map
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -15,18 +15,31 @@ img_list = []
 #     img_list.append(tensor)
 img_list = [images_1, images_2]
 images = torch.stack(img_list)
+images = images.to(device)
 
 dir_name = []
-dir_name = ["el2", "el3"]
+dir_name = ["el4", "el3"]
 
 texts = []
 
-texts = ['a zebra and an elephant near the water', 'a dog and a bird in the figure']
+texts = ['a zebra and a elephant near the lake', 'dog and bird in the figure']
 
-a = get_saliency_word(model, device, images, texts)
+tokens = clip.tokenize(texts).to(device)
 
-print(a)
+# get saliency_word
+indices = get_saliency_word(model, device, images, tokens)
+## get_saliency_word works fine
+print(indices)
 
-a = torch.tensor([1,2])
-b = torch.tensor([1,2],[3,4])
-print(b[:,a])
+# convert 2d-indices to 1d indices and imgs to corresponding extended images
+repeat_counts = torch.tensor([len(i) for i in indices]).to(device)
+extended_images = images.repeat_interleave(repeat_counts, dim=0)
+extended_tokens = tokens.repeat_interleave(repeat_counts, dim=0)
+extended_indices = torch.cat(indices)
+# convert fine, change these into get_saliency_map
+
+# get saliency_map
+map = get_saliency_map(model, device, extended_images, extended_tokens ,extended_indices)
+# convert (224,224) to 
+
+print("works fine")
