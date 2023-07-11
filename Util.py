@@ -10,8 +10,14 @@ from captum.attr import visualization
 
 
 def interpret(images, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
+<<<<<<< HEAD
     batch_size = texts.shape[0]     
     logits_per_image, _ = model(images, texts, token_num, neg_word_num)  
+=======
+    
+    batch_size = texts.shape[0]
+    logits_per_image, _ = model(images, texts, token_num, neg_word_num)
+>>>>>>> 1b9c066e45740d02c30fcaf6d6a2c5fe8d5533f3
     index = [i for i in range(batch_size)]
     one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
     one_hot[torch.arange(logits_per_image.shape[0]), index] = 1
