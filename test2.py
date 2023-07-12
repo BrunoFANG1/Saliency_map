@@ -67,9 +67,10 @@ class ImageCaptionDataset(Dataset):
             for i, name in enumerate(img_names):
                 inner_dict = {}
                 for idx in indices[i]:
-                    inner_dict[idx] = map[map_idx].cpu()
+                    inner_dict[int(idx)] = map[map_idx].cpu().tolist()
                     map_idx += 1    
                 outer_dict[name] = inner_dict
+            break
 
         # Write to JSON file
         with open('data.json', 'w') as f:
@@ -79,5 +80,6 @@ class ImageCaptionDataset(Dataset):
 dataset = ImageCaptionDataset("/home/yli556/william/project/dataSet/cc3m/cc3m.json",
                               "/home/yli556/william/project/dataSet/cc3m")
 
-a = dataset.generate_json(batch_size=100)
+a = dataset.generate_json(batch_size=10)
+print("works fine")
 # Process the images
