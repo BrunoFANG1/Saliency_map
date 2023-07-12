@@ -2,6 +2,7 @@ import os
 import re
 import ijson
 import json
+from PIL import Image
 import torch
 import CLIP.clip as clip
 from torch.utils.data import Dataset
@@ -83,3 +84,10 @@ dataset = ImageCaptionDataset("/home/yli556/william/project/dataSet/cc3m/cc3m.js
 a = dataset.generate_json(batch_size=10)
 print("works fine")
 # Process the images
+
+
+with open('data.json', 'r') as f:
+    data = json.load(f)
+
+print("load well")
+
