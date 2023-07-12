@@ -1,5 +1,6 @@
 from PIL import Image
 import torch
+import cv2
 import CLIP.clip as clip
 from Util import get_saliency_word, get_saliency_map
 
@@ -45,3 +46,4 @@ extended_indices = torch.cat(indices)
 map = get_saliency_map(model, device, extended_images, extended_tokens ,extended_indices)
 
 print("works fine")
+

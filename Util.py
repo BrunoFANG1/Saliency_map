@@ -70,7 +70,7 @@ def interpret(images, texts, model, device, start_layer=-1, start_layer_text=-1,
     return text_relevance, image_relevance
 
 
-def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,save_path=None, num=None):
+def show_image_relevance(image_relevance, image, save_RGB=False, dir_name=None,save_path=None, num=None, indices=None):
     # create heatmap from mask on image
     def show_cam_on_image(img, mask):
         heatmap = cv2.applyColorMap(np.uint8(255 * mask), cv2.COLORMAP_JET)
@@ -87,19 +87,18 @@ def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,sa
     max_values = image_relevance.amax(dim=0, keepdim=True)
     image_relevance = (image_relevance - min_values) / (max_values - min_values)  # (batch_size, 1, 224, 224)
 
-    # # test
-    # image_relevance = image_relevance.cuda().data.cpu().numpy()
-    # pic_num = 0
-    # image = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
-    # image = (image - image.min()) / (image.max() - image.min())
-    # vis = show_cam_on_image(image, image_relevance[pic_num][0])
-    # vis = np.uint8(255 * vis)
-    # vis = cv2.cvtColor(np.array(vis), cv2.COLOR_RGB2BGR)
-    # plt.imshow(vis)
-    # plt.axis('off')
-
-    # if save_RGB is True:
-    #     plt.savefig("./try.png", bbox_inches='tight', pad_inches = 0)
+    # test
+    if save_RGB is True:
+      image_relevance_ = image_relevance.cuda().data.cpu().numpy()
+      for pic_num in range(image.shape[0]):
+        image_ = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
+        image_ = (image_ - image_.min()) / (image_.max() - image_.min())
+        vis = show_cam_on_image(image_, image_relevance_[pic_num][0])
+        vis = np.uint8(255 * vis)
+        vis = cv2.cvtColor(np.array(vis), cv2.COLOR_RGB2BGR)
+        plt.imshow(vis)
+        plt.axis('off')
+        plt.savefig(f"./pic{pic_num}_{indices[pic_num]}.png", bbox_inches='tight', pad_inches = 0)
         
     return image_relevance  
 
@@ -163,7 +162,7 @@ def get_saliency_map(model,
 
    _, R_image = interpret(model=model, images=imgs, texts=tokens, device=device, token_num=indices, neg_word_num=None)   # (batch_num, 49)
 
-   maps = show_image_relevance(R_image, imgs)   # (batch_size, 1, 224, 224)
+   maps = show_image_relevance(R_image, imgs, save_RGB=True, indices=indices)   # (batch_size, 1, 224, 224)
 
    maps = average_map(maps)  # (batch_size, 196)
 
