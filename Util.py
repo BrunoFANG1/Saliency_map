@@ -8,13 +8,12 @@ import matplotlib.pyplot as plt
 import os
 from captum.attr import visualization
 
-
 def interpret(images, texts, model, device, start_layer=-1, start_layer_text=-1, token_num=None, neg_word_num=None):
     
     batch_size = texts.shape[0]
-    logits_per_image, _ = model(images, texts, token_num, neg_word_num)
+    logits_per_image, _ = model(images, texts, token_num, neg_word_num)  
     index = [i for i in range(batch_size)]
-    one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[0]), dtype=np.float32)
+    one_hot = np.zeros((logits_per_image.shape[0], logits_per_image.shape[1]), dtype=np.float32)
     one_hot[torch.arange(logits_per_image.shape[0]), index] = 1
     one_hot = torch.from_numpy(one_hot).requires_grad_(True)
     one_hot = torch.sum(one_hot.cuda() * logits_per_image)
@@ -90,7 +89,7 @@ def show_image_relevance(image_relevance, image, save_RGB=True, dir_name=None,sa
 
     # # test
     # image_relevance = image_relevance.cuda().data.cpu().numpy()
-    # pic_num = 1
+    # pic_num = 0
     # image = image[pic_num].permute(1, 2, 0).data.cpu().numpy()
     # image = (image - image.min()) / (image.max() - image.min())
     # vis = show_cam_on_image(image, image_relevance[pic_num][0])
@@ -133,48 +132,6 @@ clip.clip._MODELS = {
     "ViT-B/16": "https://openaipublic.azureedge.net/clip/models/5806e77cd80f8b59890b7e101eabd078d9fb84e6937f9e85e4ecb61988df416f/ViT-B-16.pt",
     "ViT-L/14": "https://openaipublic.azureedge.net/clip/models/b8cca3fd41ae0c99ba7e8951adf17d267cdb84cd88be6f7c2e0eca1737a03836/ViT-L-14.pt",
 }
- 
-
-def try_patch_image(model,
-                  device,
-                  imgs,
-                  dirs_name,
-                  texts=None,
-                  save_path=None,
-                  ):
-
-    batch_size = len(texts)
-
-    imgs = imgs.to(device)
-    text = clip.tokenize(texts).to(device)
-
-    R_text_None, _ = interpret(model=model, image=imgs, texts=text, device=device)
-
-    indices = show_heatmap_on_text(texts, text, R_text_None)
-
-
-
-    for img in range(batch_size):
-
-      new_dir_path = os.path.join(save_path, dirs_name[img])
-      os.makedirs(new_dir_path, exist_ok=True)
-
-      # get saliency map
-      final_map = torch.zeros((len(indices[img]), 196))
-      for i in range(len(indices[img])):
-          
-          _, R_image = interpret(model=model, image=imgs[img].unsqueeze(0), texts=text[img].unsqueeze(0), device=device, token_num=indices[img][i]+1, neg_word_num=None)
-
-          saliency_prob_map = show_image_relevance(R_image, imgs[img].unsqueeze(0), save_RGB=False, dir_name=dirs_name[img], save_path=new_dir_path, num=i)
-
-          #convert from 224*224 to 14*14
-          patch_prob_map = average_map(saliency_prob_map)
-
-          final_map[i] = patch_prob_map
-
-      torch.save(final_map, f"{new_dir_path}/{dirs_name[img]}_patched_prob_map.pt")
-
-    return 0
 
 def average_map(map=None, patch_size=16):
     map = map.squeeze()
@@ -193,7 +150,7 @@ def get_saliency_word(model,
                       imgs,
                       tokens):
     # imgs = imgs.to(device)
-    R_text_None, _ = interpret(model=model, images=imgs, texts=tokens, device=device)
+    R_text_None, _ = interpret(model=model, images=imgs, texts=tokens, device=device)    # (batch_num, 77, 77)
 
     indices = show_heatmap_on_text(tokens, R_text_None)
     return indices
@@ -204,7 +161,7 @@ def get_saliency_map(model,
                      tokens,
                      indices):
 
-   _, R_image = interpret(model=model, images=imgs, texts=tokens, device=device, token_num=indices, neg_word_num=None)
+   _, R_image = interpret(model=model, images=imgs, texts=tokens, device=device, token_num=indices, neg_word_num=None)   # (batch_num, 49)
 
    maps = show_image_relevance(R_image, imgs)   # (batch_size, 1, 224, 224)
 

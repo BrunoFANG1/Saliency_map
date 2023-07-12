@@ -1,7 +1,7 @@
 from PIL import Image
 import torch
 import CLIP.clip as clip
-from Util import get_saliency_word, get_saliency_map, create_dict
+from Util import get_saliency_word, get_saliency_map
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model, preprocess = clip.load("ViT-B/32", device=device, jit=False)
@@ -26,10 +26,10 @@ texts = []
 texts = ['a zebra and a elephant near the lake', 'dog and bird in the figure']
 
 # tokenize captions
-tokens = clip.tokenize(texts).to(device)
+tokens = clip.tokenize(texts).to(device)    #  (batch_num, 77)
 
 # get saliency_word
-indices = get_saliency_word(model, device, images, tokens)
+indices = get_saliency_word(model, device, images, tokens)  
 
 print(indices)
 ## get_saliency_word works fine

@@ -365,12 +365,12 @@ class CLIP(nn.Module):
         return x
 
     def forward(self, image, text, word_num = None, neg_word_num=None):
-        image_features = self.encode_image(image)
+        image_features = self.encode_image(image)    # (batch_num, 512)
         
         batch_size = image.shape[0]
 
         if word_num is None:
-            text_features = self.encode_text(text)
+            text_features = self.encode_text(text)     # (batch_num, 512)
         else:
             text_features = self.encode_text(text, word_num = word_num)[torch.arange(batch_size), word_num, :]
 
@@ -390,8 +390,8 @@ class CLIP(nn.Module):
         # cosine similarity as logits
         logit_scale = self.logit_scale.exp()
 
-        logits_per_image = logits_per_text =  torch.sum(logit_scale * image_features * text_features, dim=-1).unsqueeze(-1)
-        print(logits_per_image.shape)
+        logits_per_image = logit_scale * image_features @ text_features.t()
+        logits_per_text =  logit_scale * text_features @ image_features.t()
         
         # shape = [global_batch_size, global_batch_size]
         return logits_per_image, logits_per_text
