@@ -5,7 +5,7 @@ import json
 import torch
 import CLIP.clip as clip
 from torch.utils.data import Dataset
-from Util import get_saliency_word, get_saliency_map
+from Util import get_saliency_word, get_saliency_map, clip_text
 from tqdm import tqdm
 from PIL import Image
 from PIL import UnidentifiedImageError
@@ -19,7 +19,8 @@ class ImageCaptionDataset(Dataset):
         self.img_dir = img_dir
 
         with open(self.json_file, 'r') as f:
-            self.data = list(ijson.items(f, 'item'))  # load json data into memory
+            self.data = list(ijson.items(f, 'item'))
+                
 
     def __len__(self):
         return len(self.data)
@@ -34,21 +35,22 @@ class ImageCaptionDataset(Dataset):
             image = preprocess(Image.open(img_path))
         except UnidentifiedImageError:
             print(f"cannot find this image {img_path}, skipping")
-            return None
+            return torch.zeros(3,224,224), 'This is a junk', 'useless'
         return image, img_caption, img_name  # Not really useful, but need to return something
 
     def generate_json(self, batch_size=128):
         outer_dict = {}
     
         # Use DataLoader to handle batching
-        dataloader = torch.utils.data.DataLoader(self, batch_size=batch_size, num_workers=2, shuffle=False)
+        dataloader = torch.utils.data.DataLoader(self, batch_size=batch_size, num_workers=4, shuffle=False)
     
         for batch in tqdm(dataloader):
             images, img_captions, img_names = batch
 
             # Apply transformations to the images and get saliency words from captions
             images = images.to(device)
-            tokens = clip.tokenize(img_captions).to(device) 
+            clipped_captions = [clip_text(caption, max_length=40) for caption in img_captions]
+            tokens = clip.tokenize(clipped_captions).to(device) 
 
             indices = get_saliency_word(model, device, images, tokens)
 
@@ -73,10 +75,9 @@ class ImageCaptionDataset(Dataset):
         with open('data.json', 'w') as f:
             json.dump(outer_dict, f)
 
-
 # Usage:
 dataset = ImageCaptionDataset("/home/yli556/william/project/dataSet/cc3m/cc3m.json",
                               "/home/yli556/william/project/dataSet/cc3m")
 
-dataset.generate_json
+a = dataset.generate_json(batch_size=100)
 # Process the images
